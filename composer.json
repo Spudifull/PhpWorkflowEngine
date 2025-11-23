@@ -1,2 +1,31 @@
 {
+    "name": "spudifull/php-workflow-engine",
+    "description": "Асинхронный движок выполнения процессов для PHP с событийным хранением и гарантированным доведением задач до конца",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Spudifull\\PhpWorkflowEngine\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "require": {
+        "symfony/serializer": "^7.3",
+        "symfony/property-access": "^7.3",
+        "symfony/property-info": "^7.3",
+        "symfony/uid": "^7.3",
+        "symfony/clock": "^7.3",
+        "doctrine/dbal": "^4.3"
+    },
+    "require-dev": {
+        "pestphp/pest": "^4.1"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
 }
