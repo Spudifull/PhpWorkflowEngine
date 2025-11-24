@@ -5,17 +5,15 @@ declare(strict_types=1);
 namespace Spudifull\PhpWorkflowEngine\Domain\Event;
 
 use DateTimeImmutable;
-
 use Spudifull\PhpWorkflowEngine\Domain\ValueObject\WorkflowId;
 
-final readonly class ActivityCompleted extends AbstractEvent
+final readonly class WorkflowCompleted extends AbstractEvent
 {
     public function __construct(
-        WorkflowId $id,
-        public string $activityName,
+        WorkflowId $workflowId,
         public mixed $result,
-        DateTimeImmutable $createdDt = new DateTimeImmutable(),
-    ){
-        parent::__construct($id, $createdDt);
+        DateTimeImmutable $occurredAt = new DateTimeImmutable(),
+    ) {
+        parent::__construct($workflowId, $occurredAt);
     }
 }

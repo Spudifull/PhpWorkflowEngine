@@ -18,7 +18,9 @@
         "symfony/property-info": "^7.3",
         "symfony/uid": "^7.3",
         "symfony/clock": "^7.3",
-        "doctrine/dbal": "^4.3"
+        "doctrine/dbal": "^4.3",
+        "psr/container": "^2.0",
+        "php-di/php-di": "^7.1"
     },
     "require-dev": {
         "pestphp/pest": "^4.1"

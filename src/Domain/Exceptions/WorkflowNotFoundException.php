@@ -7,7 +7,7 @@ namespace Spudifull\PhpWorkflowEngine\Domain\Exceptions;
 use RuntimeException;
 use Spudifull\PhpWorkflowEngine\Domain\ValueObject\WorkflowId;
 
-class WorkflowNotFoundException extends RuntimeException
+final class WorkflowNotFoundException extends RuntimeException
 {
     public static function withId(WorkflowId $id): self
     {

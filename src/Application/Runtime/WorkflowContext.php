@@ -10,7 +10,7 @@ use Throwable;
 
 use Spudifull\PhpWorkflowEngine\Application\DTO\ActivityRequest;
 use Spudifull\PhpWorkflowEngine\Domain\Event\ActivityCompleted;
-use Spudifull\PhpWorkflowEngine\Domain\Event\WorkflowStarted;
+use Spudifull\PhpWorkflowEngine\Domain\Exceptions\NonDeterministicWorkflowException;
 use Spudifull\PhpWorkflowEngine\Domain\Model\EventStream;
 use Spudifull\PhpWorkflowEngine\Domain\Workflow\WorkflowContextInterface;
 
@@ -22,11 +22,6 @@ final class WorkflowContext implements WorkflowContextInterface
     {
         $this->historyIterator = $history->getIterator();
         $this->historyIterator->rewind();
-
-        $first = $this->historyIterator->current();
-        if ($first instanceof WorkflowStarted) {
-            $this->historyIterator->next();
-        }
     }
 
     /**
@@ -35,23 +30,27 @@ final class WorkflowContext implements WorkflowContextInterface
      *
      * @return mixed
      *
+     * @throws NonDeterministicWorkflowException
      * @throws Throwable
      */
     public function executeActivity(string $activityClass, array $args = []): mixed
     {
-        if ($this->historyIterator->valid()) {
-            $currentEvent = $this->historyIterator->current();
+        while ($this->historyIterator->valid()) {
+            $event = $this->historyIterator->current();
+            $this->historyIterator->next();
 
-            if ($currentEvent instanceof ActivityCompleted) {
-                if ($currentEvent->activityName !== $activityClass) {
-                    throw new NonDeterministicWorkflowException(
-                        "History mismatch: expected $activityClass, got {$currentEvent->activityName}"
-                    );
-                }
-
-                $this->historyIterator->next();
-                return $currentEvent->result;
+            if (!$event instanceof ActivityCompleted) {
+                continue;
             }
+
+            if ($event->activityName !== $activityClass) {
+                throw NonDeterministicWorkflowException::activityMismatch(
+                    expected: $activityClass,
+                    actual: $event->activityName
+                );
+            }
+
+            return $event->result;
         }
 
         return Fiber::suspend(new ActivityRequest($activityClass, $args));

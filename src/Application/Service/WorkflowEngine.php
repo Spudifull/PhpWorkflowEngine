@@ -21,19 +21,19 @@ final readonly class WorkflowEngine
      * Метод не выполняет код Workflow сразу, а только планирует его (создает событие).
      *
      * @var string $workflowClass
-     * @var mixed $args
+     * @var array $input
      * @throws Exception
      *
      * @return WorkflowId
      */
-    public function start(string $workflowClass, mixed ...$args): WorkflowId
+    public function start(string $workflowClass, array $input = []): WorkflowId
     {
         $id = WorkflowId::generate();
 
         $event = new WorkflowStarted(
             workflowId: $id,
             workflowName: $workflowClass,
-            input: $args
+            input: $input
         );
 
         $this->eventStore->append($id, new EventStream([$event]));
