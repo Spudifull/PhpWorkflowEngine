@@ -18,14 +18,4 @@ final readonly class WorkflowStarted extends AbstractEvent
     ) {
         parent::__construct($workflowId, $occurredDt);
     }
-
-    public function getWorkflowId(): WorkflowId
-    {
-        // TODO: Implement getWorkflowId() method.
-    }
-
-    public function getOccurredDt(): DateTimeImmutable
-    {
-        // TODO: Implement getOccurredDt() method.
-    }
 }

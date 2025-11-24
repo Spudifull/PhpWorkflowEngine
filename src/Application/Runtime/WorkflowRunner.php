@@ -6,15 +6,16 @@ namespace Spudifull\PhpWorkflowEngine\Application\Runtime;
 
 use Fiber;
 use RuntimeException;
+use Spudifull\PhpWorkflowEngine\Domain\Model\EventStream;
 use Throwable;
 
 use Spudifull\PhpWorkflowEngine\Application\DTO\ActivityRequest;
 
 final class WorkflowRunner
 {
-    public function run(object $workflow, string $method, array $args = []): ?ActivityRequest
+    public function run(object $workflow, string $method, EventStream $history, array $args = []): ?ActivityRequest
     {
-        $context = new WorkflowContext();
+        $context = new WorkflowContext($history);
 
         $fiber = new Fiber(function () use ($workflow, $method, $context, $args) {
             return $workflow->$method($context, ...$args);
