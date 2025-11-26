@@ -13,8 +13,8 @@ final readonly class ActivityScheduled extends AbstractEvent
         WorkflowId $workflowId,
         public string $activityName,
         public array $args,
-        DateTimeImmutable $occurredAt = new DateTimeImmutable(),
+        DateTimeImmutable $occurredDt = new DateTimeImmutable(),
     ) {
-        parent::__construct($workflowId, $occurredAt);
+        parent::__construct($workflowId, $occurredDt);
     }
 }

@@ -12,8 +12,8 @@ final readonly class WorkflowCompleted extends AbstractEvent
     public function __construct(
         WorkflowId $workflowId,
         public mixed $result,
-        DateTimeImmutable $occurredAt = new DateTimeImmutable(),
+        DateTimeImmutable $occurredDt = new DateTimeImmutable(),
     ) {
-        parent::__construct($workflowId, $occurredAt);
+        parent::__construct($workflowId, $occurredDt);
     }
 }

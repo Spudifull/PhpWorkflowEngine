@@ -10,7 +10,6 @@ use Spudifull\PhpWorkflowEngine\Domain\ValueObject\WorkflowId;
 
 interface DomainEventInterface
 {
-    public function getWorkflowId(): WorkflowId;
-    public function getOccurredDt(): DateTimeImmutable;
-    public function getName(): string;
+    public WorkflowId $workflowId { get; }
+    public DateTimeImmutable $occurredDt { get; }
 }

@@ -18,22 +18,6 @@ abstract readonly class AbstractEvent implements DomainEventInterface
     ) {}
 
     /**
-     * @return WorkflowId
-     */
-    public function getWorkflowId(): WorkflowId
-    {
-        return $this->workflowId;
-    }
-
-    /**
-     * @return DateTimeImmutable
-     */
-    public function getOccurredDt(): DateTimeImmutable
-    {
-        return $this->occurredDt;
-    }
-
-    /**
      * @return string
      */
     public function getName(): string
