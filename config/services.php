@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Spudifull\PhpWorkflowEngine\Domain\Repository\QueueInterface;
+use Spudifull\PhpWorkflowEngine\Infrastructure\Transport\RabbitMQueue;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 
 use Spudifull\PhpWorkflowEngine\Demo\PaymentSaga;
@@ -35,6 +37,14 @@ return static function (ContainerConfigurator $configurator): void {
                 'password' => $_ENV['DB_PASSWORD'] ?? 'secret_password',
                 'charset' => 'utf8',
             ]
+        ]);
+
+    $services->set(QueueInterface::class, RabbitMQueue::class)
+        ->args([
+            '$host' => $_ENV['RABBITMQ_HOST'] ?? '127.0.0.1',
+            '$port' => (int)($_ENV['RABBITMQ_PORT'] ?? 5672),
+            '$user' => $_ENV['RABBITMQ_USER'] ?? 'guest',
+            '$pass' => $_ENV['RABBITMQ_PASS'] ?? 'guest',
         ]);
 
     $services->set(EventSerializer::class);

@@ -23,7 +23,9 @@
         "php-di/php-di": "^7.1",
         "symfony/dependency-injection": "^8.0",
         "symfony/config": "^8.0",
-        "symfony/dotenv": "^8.0"
+        "symfony/dotenv": "^8.0",
+        "php-amqplib/php-amqplib": "3.7",
+        "ext-pcntl": "*"
     },
     "require-dev": {
         "pestphp/pest": "^4.1"
