@@ -14,4 +14,11 @@ interface WorkflowContextInterface
      * @return mixed Возвращает результат выполнения (или прерывает выполнение через yield)
      */
     public function executeActivity(string $activityClass, array $args = []): mixed;
+
+    /**
+     * @template T
+     * @param class-string<T> $interfaceClass
+     * @return T
+     */
+    public function newActivityStub(string $interfaceClass): mixed;
 }
