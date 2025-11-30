@@ -11,11 +11,11 @@ use Spudifull\PhpWorkflowEngine\Domain\ValueObject\WorkflowId;
 final readonly class ActivityCompleted extends AbstractEvent
 {
     public function __construct(
-        WorkflowId $id,
+        WorkflowId $workflowId,
         public string $activityName,
         public mixed $result,
-        DateTimeImmutable $createdDt = new DateTimeImmutable(),
+        DateTimeImmutable $occurredDt = new DateTimeImmutable(),
     ){
-        parent::__construct($id, $createdDt);
+        parent::__construct($workflowId, $occurredDt);
     }
 }

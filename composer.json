@@ -20,7 +20,10 @@
         "symfony/clock": "^7.3",
         "doctrine/dbal": "^4.3",
         "psr/container": "^2.0",
-        "php-di/php-di": "^7.1"
+        "php-di/php-di": "^7.1",
+        "symfony/dependency-injection": "^8.0",
+        "symfony/config": "^8.0",
+        "symfony/dotenv": "^8.0"
     },
     "require-dev": {
         "pestphp/pest": "^4.1"

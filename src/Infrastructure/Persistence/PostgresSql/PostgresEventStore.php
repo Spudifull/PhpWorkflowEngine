@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Spudifull\PhpWorkflowEngine\Infrastructure\Persistence\Postgres;
+namespace Spudifull\PhpWorkflowEngine\Infrastructure\Persistence\PostgresSql;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Spudifull\PhpWorkflowEngine\Domain\Event\AbstractEvent;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Throwable;
 use Spudifull\PhpWorkflowEngine\Domain\Exceptions\ConcurrencyException;
@@ -133,6 +134,7 @@ final class PostgresEventStore implements EventStoreInterface
         $version = $startVersion;
 
         foreach ($events as $event) {
+            /** @var AbstractEvent $event */
             $version++;
             $placeholders[] = '(?, ?, ?, ?, ?)';
 
@@ -141,7 +143,7 @@ final class PostgresEventStore implements EventStoreInterface
                 $version,
                 $event::class,
                 $this->serializer->serialize($event),
-                $event->occurredAt->format('Y-m-d H:i:s.u')
+                $event->occurredDt->format('Y-m-d H:i:s.u')
             );
 
             array_push($types, ...self::PARAM_TYPES);
