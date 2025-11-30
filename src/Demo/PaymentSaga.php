@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Spudifull\PhpWorkflowEngine\Demo;
 
+use Spudifull\PhpWorkflowEngine\Domain\Exceptions\ActivityFailureException;
 use Spudifull\PhpWorkflowEngine\Domain\Workflow\WorkflowContextInterface;
 
 class PaymentSaga
@@ -18,8 +19,17 @@ class PaymentSaga
         /** @var PaymentActivitiesInterface $activities */
         $activities = $ctx->newActivityStub(PaymentActivitiesInterface::class);
 
-        $chargeResult = $activities->chargeCreditCard(['amount' => $input['amount']]);
+        try {
+            $chargeResult = $activities->chargeCreditCard(['amount' => $input['amount']]);
 
-        return "Process finished. Charge result: " . $chargeResult;
+            $activities->chargeCreditCard(['amount' => 9999]);
+
+        } catch (ActivityFailureException $e) {
+            $activities->refundPayment(['amount' => $input['amount']]);
+
+            return "Workflow Failed, but Money Refunded! Error: " . $e->getMessage();
+        }
+
+        return "Success!";
     }
 }

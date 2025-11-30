@@ -8,6 +8,8 @@ use Fiber;
 use InvalidArgumentException;
 use Iterator;
 use ReflectionException;
+use Spudifull\PhpWorkflowEngine\Domain\Event\ActivityFailed;
+use Spudifull\PhpWorkflowEngine\Domain\Exceptions\ActivityFailureException;
 use Throwable;
 
 use Spudifull\PhpWorkflowEngine\Domain\Attribute\ActivityInterface;
@@ -40,9 +42,9 @@ final class WorkflowContext implements WorkflowContextInterface
     {
         while ($this->historyIterator->valid()) {
             $event = $this->historyIterator->current();
-            $this->historyIterator->next();
 
-            if (!$event instanceof ActivityCompleted) {
+            if (!$event instanceof ActivityCompleted && !$event instanceof ActivityFailed) {
+                $this->historyIterator->next();
                 continue;
             }
 
@@ -53,7 +55,13 @@ final class WorkflowContext implements WorkflowContextInterface
                 );
             }
 
-            return $event->result;
+            $this->historyIterator->next();
+
+            if ($event instanceof ActivityCompleted) {
+                return $event->result;
+            }
+
+            throw new ActivityFailureException($event->errorMessage);
         }
 
         return Fiber::suspend(new ActivityRequest($activityClass, $args));
