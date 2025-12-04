@@ -19,5 +19,5 @@ test('it starts a workflow by saving the initial event', function () {
     $event = iterator_to_array($stream)[0];
     expect($event)->toBeInstanceOf(WorkflowStarted::class)
         ->and($event->workflowName)->toBe($workflowClass)
-        ->and($event->input)->toBe([$inputData]);
+        ->and($event->input)->toBe($inputData);
 });

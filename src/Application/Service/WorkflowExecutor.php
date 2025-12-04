@@ -62,7 +62,7 @@ final readonly class WorkflowExecutor
         }
 
         try {
-            $output = $this->runner->run($workflow, 'run', $history, $initialEvent->input);
+            $output = $this->runner->run($workflow, 'run', $history, [$initialEvent->input]);
         } catch (Throwable $e) {
             $event = new WorkflowFailed(
                 workflowId: $id,
