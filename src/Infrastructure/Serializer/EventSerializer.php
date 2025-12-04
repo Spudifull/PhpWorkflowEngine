@@ -6,6 +6,7 @@ namespace Spudifull\PhpWorkflowEngine\Infrastructure\Serializer;
 
 use Spudifull\PhpWorkflowEngine\Domain\Contract\DomainEventInterface;
 
+use Spudifull\PhpWorkflowEngine\Domain\Contract\EventSerializerInterface;
 use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
@@ -14,7 +15,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Serializer\Serializer;
 
-final class EventSerializer
+final class EventSerializer implements EventSerializerInterface
 {
     private Serializer $serializer;
 

@@ -7,15 +7,16 @@ namespace Spudifull\PhpWorkflowEngine\Infrastructure\Persistence\PostgresSql;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use Spudifull\PhpWorkflowEngine\Domain\Event\AbstractEvent;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Throwable;
+
+use Spudifull\PhpWorkflowEngine\Domain\Contract\EventSerializerInterface;
+use Spudifull\PhpWorkflowEngine\Domain\Event\AbstractEvent;
 use Spudifull\PhpWorkflowEngine\Domain\Exceptions\ConcurrencyException;
 use Spudifull\PhpWorkflowEngine\Domain\Exceptions\WorkflowNotFoundException;
 use Spudifull\PhpWorkflowEngine\Domain\Model\EventStream;
 use Spudifull\PhpWorkflowEngine\Domain\Repository\EventStoreInterface;
 use Spudifull\PhpWorkflowEngine\Domain\ValueObject\WorkflowId;
-use Spudifull\PhpWorkflowEngine\Infrastructure\Serializer\EventSerializer;
 
 final class PostgresEventStore implements EventStoreInterface
 {
@@ -30,7 +31,7 @@ final class PostgresEventStore implements EventStoreInterface
 
     public function __construct(
         private readonly Connection $connection,
-        private readonly EventSerializer $serializer
+        private readonly EventSerializerInterface $serializer
     ) {}
 
     /**

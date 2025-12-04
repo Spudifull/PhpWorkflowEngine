@@ -23,7 +23,7 @@ final class WorkflowRunner
         $context = new WorkflowContext($history);
 
         $fiber = new Fiber(function () use ($workflow, $method, $context, $args) {
-            return $workflow->$method($context, $args);
+            return $workflow->$method($context, ...$args);
         });
 
         try {
