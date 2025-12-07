@@ -20,7 +20,9 @@ final class WorkflowRunner
      */
     public function run(object $workflow, string $method, EventStream $history, array $args = []): mixed
     {
-        $context = new WorkflowContext($history);
+        $replayer = new HistoryReplayer($history);
+
+        $context = new WorkflowContext($replayer);
 
         $fiber = new Fiber(function () use ($workflow, $method, $context, $args) {
             return $workflow->$method($context, ...$args);

@@ -54,6 +54,7 @@ test('full workflow lifecycle', function () {
 
     $history = $store->load($id);
     $events = iterator_to_array($history);
+
     $lastEvent = end($events);
 
     expect($lastEvent)->toBeInstanceOf(ActivityScheduled::class)
@@ -66,8 +67,6 @@ test('full workflow lifecycle', function () {
 
     $history = $store->load($id);
     $events = iterator_to_array($history);
-
-    var_dump('All events:', array_map(fn($e) => get_class($e), $events));
 
     $lastEvent = end($events);
 

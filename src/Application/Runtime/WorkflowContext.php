@@ -23,48 +23,19 @@ final class WorkflowContext implements WorkflowContextInterface
 {
     private Iterator $historyIterator;
 
-    public function __construct(EventStream $history)
-    {
-        $this->historyIterator = $history->getIterator();
-        $this->historyIterator->rewind();
-    }
+    public function __construct(
+        private HistoryReplayer $replayer
+    ) {}
 
     /**
      * @param string $activityClass
      * @param array $args
-     *
      * @return mixed
-     *
-     * @throws NonDeterministicWorkflowException
      * @throws Throwable
      */
     public function executeActivity(string $activityClass, array $args = []): mixed
     {
-        while ($this->historyIterator->valid()) {
-            $event = $this->historyIterator->current();
-
-            if (!$event instanceof ActivityCompleted && !$event instanceof ActivityFailed) {
-                $this->historyIterator->next();
-                continue;
-            }
-
-            if ($event->activityName !== $activityClass) {
-                throw NonDeterministicWorkflowException::activityMismatch(
-                    expected: $activityClass,
-                    actual: $event->activityName
-                );
-            }
-
-            $this->historyIterator->next();
-
-            if ($event instanceof ActivityCompleted) {
-                return $event->result;
-            }
-
-            throw new ActivityFailureException($event->errorMessage);
-        }
-
-        return Fiber::suspend(new ActivityRequest($activityClass, $args));
+        return $this->replayer->handleActivity($activityClass, $args);
     }
 
     /**
