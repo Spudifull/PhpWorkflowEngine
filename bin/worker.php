@@ -24,7 +24,9 @@ $queue = $container->get(QueueInterface::class);
 /** @var WorkflowExecutor $executor */
 $executor = $container->get(WorkflowExecutor::class);
 
-$queue->consume(function (WorkflowId $id) use ($executor) {
+$queue->consume(function (string $message) use ($executor) {
+    $id = WorkflowId::fromString($message);
+
     echo "Processing Workflow: $id\n";
 
     $executor->run($id);

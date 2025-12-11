@@ -11,10 +11,10 @@ use PhpAmqpLib\Exception\AMQPTimeoutException;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
 use RuntimeException;
+use Stringable;
 use Throwable;
 
 use Spudifull\PhpWorkflowEngine\Domain\Repository\QueueInterface;
-use Spudifull\PhpWorkflowEngine\Domain\ValueObject\WorkflowId;
 
 final class RabbitMQueue implements QueueInterface
 {
@@ -27,33 +27,35 @@ final class RabbitMQueue implements QueueInterface
         private readonly int $port,
         private readonly string $user,
         private readonly string $pass,
-        private readonly string $queueName = 'workflow_tasks',
+        private readonly string $defaultQueue = 'workflow_tasks',
         private readonly int $maxRetries = 3,
         private readonly float $connectionTimeout = 5.0,
         private readonly int $heartbeat = 30,
-    ){}
+    ) {}
 
     /**
-     * @param WorkflowId $id
-     * @return void
+     * @param Stringable $message
+     * @param string|null $queue
      */
-    public function push(WorkflowId $id): void
+    public function push(Stringable $message, ?string $queue = null): void
     {
+        $queueName = $queue ?? $this->defaultQueue;
         $attempts = 0;
 
         while ($attempts < $this->maxRetries) {
             try {
                 $this->connect();
+                $this->ensureQueueExists($queueName);
 
                 $msg = new AMQPMessage(
-                    (string)$id,
+                    (string)$message,
                     [
                         'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT,
                         'timestamp' => time(),
                     ]
                 );
 
-                $this->channel->basic_publish($msg, '', $this->queueName);
+                $this->channel->basic_publish($msg, '', $queueName);
 
                 return;
 
@@ -64,9 +66,10 @@ final class RabbitMQueue implements QueueInterface
                 if ($attempts >= $this->maxRetries) {
                     throw new RuntimeException(
                         sprintf(
-                            'Failed to push workflow %s to queue after %d attempts',
-                            $id,
-                            $this->maxRetries
+                            'Failed to push message to queue "%s" after %d attempts: %s',
+                            $queueName,
+                            $this->maxRetries,
+                            $message
                         ),
                         previous: $e
                     );
@@ -78,12 +81,40 @@ final class RabbitMQueue implements QueueInterface
     }
 
     /**
-     * @param callable $callback
+     * @param string|null $queue
+     * @return string|null
+     */
+    public function pop(?string $queue = null): ?string
+    {
+        $queueName = $queue ?? $this->defaultQueue;
+
+        try {
+            $this->connect();
+            $this->ensureQueueExists($queueName);
+
+            $message = $this->channel->basic_get($queueName, true);
+
+            return $message?->getBody();
+
+        } catch (Throwable $e) {
+            throw new RuntimeException(
+                sprintf('Failed to pop message from queue "%s"', $queueName),
+                previous: $e
+            );
+        }
+    }
+
+    /**
+     * @param callable(string): void $callback
+     * @param string|null $queue
      * @throws ErrorException
      */
-    public function consume(callable $callback): void
+    public function consume(callable $callback, ?string $queue = null): void
     {
+        $queueName = $queue ?? $this->defaultQueue;
+
         $this->connect();
+        $this->ensureQueueExists($queueName);
 
         if (function_exists('pcntl_signal')) {
             pcntl_signal(SIGTERM, fn() => $this->stop());
@@ -91,13 +122,13 @@ final class RabbitMQueue implements QueueInterface
         }
 
         $wrapper = function (AMQPMessage $msg) use ($callback): void {
-            $workflowId = $msg->getBody();
+            $messageBody = $msg->getBody();
 
             try {
-                $callback(new WorkflowId($workflowId));
+                $callback($messageBody);
                 $msg->ack();
-            } catch (\Throwable) {
-                $msg->nack();
+            } catch (Throwable $e) {
+                $msg->nack(requeue: true);
             }
         };
 
@@ -108,7 +139,7 @@ final class RabbitMQueue implements QueueInterface
         );
 
         $this->channel->basic_consume(
-            queue: $this->queueName,
+            queue: $queueName,
             callback: $wrapper
         );
 
@@ -121,10 +152,45 @@ final class RabbitMQueue implements QueueInterface
                 $this->channel->wait(null, false, 1);
             } catch (AMQPTimeoutException) {
                 continue;
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 break;
             }
         }
+    }
+
+    /**
+     * @param string $queueName
+     */
+    private function ensureQueueExists(string $queueName): void
+    {
+        static $declaredQueues = [];
+
+        if (isset($declaredQueues[$queueName])) {
+            return;
+        }
+
+        $this->channel->queue_declare(
+            $queueName . '_dlq',
+            false,
+            true,
+            false,
+            false
+        );
+
+        $this->channel->queue_declare(
+            $queueName,
+            false,
+            true,
+            false,
+            false,
+            false,
+            new AMQPTable([
+                'x-dead-letter-exchange' => '',
+                'x-dead-letter-routing-key' => $queueName . '_dlq',
+            ])
+        );
+
+        $declaredQueues[$queueName] = true;
     }
 
     private function connect(): void
@@ -150,27 +216,6 @@ final class RabbitMQueue implements QueueInterface
             );
 
             $this->channel = $this->connection->channel();
-
-            $this->channel->queue_declare(
-                $this->queueName . '_dlq',
-                false,
-                true,
-                false,
-                false
-            );
-
-            $this->channel->queue_declare(
-                $this->queueName,
-                false,
-                true,
-                false,
-                false,
-                false,
-                new AMQPTable([
-                    'x-dead-letter-exchange' => '',
-                    'x-dead-letter-routing-key' => $this->queueName . '_dlq',
-                ])
-            );
 
         } catch (Throwable $e) {
             $this->disconnect();

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Spudifull\PhpWorkflowEngine\Application\Runtime\ActivityRegistry;
+use Spudifull\PhpWorkflowEngine\Demo\PaymentActivities;
 use Spudifull\PhpWorkflowEngine\Domain\Repository\QueueInterface;
 use Spudifull\PhpWorkflowEngine\Infrastructure\Transport\RabbitMQueue;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -66,6 +68,11 @@ return static function (ContainerConfigurator $configurator): void {
             service(WorkflowRunner::class),
             service('service_container')
         ]);
+
+    $services->set(PaymentActivities::class);
+
+    $services->set(ActivityRegistry::class)
+        ->call('register', [service(PaymentActivities::class)]);
 
     $services->set(PaymentSaga::class)->public();
 };

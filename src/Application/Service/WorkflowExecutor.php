@@ -8,6 +8,8 @@ use Exception;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
+use Spudifull\PhpWorkflowEngine\Domain\Repository\QueueInterface;
+use Spudifull\PhpWorkflowEngine\Domain\ValueObject\ActivityTask;
 use Throwable;
 
 use Spudifull\PhpWorkflowEngine\Application\DTO\ActivityRequest;
@@ -27,7 +29,8 @@ final readonly class WorkflowExecutor
     public function __construct(
         private EventStoreInterface $eventStore,
         private WorkflowRunner $runner,
-        private ContainerInterface $container
+        private ContainerInterface $container,
+        private QueueInterface $queue
     ) {}
 
     /**
@@ -81,7 +84,13 @@ final readonly class WorkflowExecutor
             );
             $this->eventStore->append($id, new EventStream([$event]));
 
-            // TODO: Здесь мы бы отправили сообщение в RabbitMQ для ActivityWorker
+            $task = new ActivityTask(
+                workflowId: $id,
+                activityName: $output->name,
+                args: $output->args
+            );
+
+            $this->queue->push($task, 'activity_tasks');
         } else {
             $event = new WorkflowCompleted(
                 workflowId: $id,
