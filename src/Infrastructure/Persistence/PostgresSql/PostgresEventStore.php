@@ -7,7 +7,6 @@ namespace Spudifull\PhpWorkflowEngine\Infrastructure\Persistence\PostgresSql;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Throwable;
 
 use Spudifull\PhpWorkflowEngine\Domain\Contract\EventSerializerInterface;
@@ -47,19 +46,13 @@ final class PostgresEventStore implements EventStoreInterface
             return;
         }
 
-        $this->connection->beginTransaction();
+        $currentVersion = 0;
 
         try {
             $currentVersion = $this->getCurrentVersion($id);
             $this->insertEvents($id, $events, $currentVersion);
-            $this->connection->commit();
-
         } catch (UniqueConstraintViolationException) {
-            $this->connection->rollBack();
             throw ConcurrencyException::forWorkflow($id, $currentVersion);
-        } catch (Throwable $e) {
-            $this->connection->rollBack();
-            throw $e;
         }
     }
 
@@ -67,7 +60,6 @@ final class PostgresEventStore implements EventStoreInterface
      * @param WorkflowId $id
      * @return EventStream
      * @throws Exception
-     * @throws ExceptionInterface
      */
     public function load(WorkflowId $id): EventStream
     {
@@ -120,9 +112,7 @@ final class PostgresEventStore implements EventStoreInterface
      * @param WorkflowId $id
      * @param EventStream $events
      * @param int $startVersion
-     * @return void
      * @throws Exception
-     * @throws ExceptionInterface
      */
     private function insertEvents(WorkflowId $id, EventStream $events, int $startVersion): void
     {

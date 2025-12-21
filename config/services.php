@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\DependencyInjection\Reference;
+
 use Spudifull\PhpWorkflowEngine\Application\Runtime\ActivityRegistry;
 use Spudifull\PhpWorkflowEngine\Demo\PaymentActivities;
+use Spudifull\PhpWorkflowEngine\Domain\Repository\OutboxRepositoryInterface;
 use Spudifull\PhpWorkflowEngine\Domain\Repository\QueueInterface;
+use Spudifull\PhpWorkflowEngine\Infrastructure\Persistence\PostgresSql\PostgresSqlOutboxStore;
 use Spudifull\PhpWorkflowEngine\Infrastructure\Transport\RabbitMQueue;
-use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
-
 use Spudifull\PhpWorkflowEngine\Demo\PaymentSaga;
 use Spudifull\PhpWorkflowEngine\Application\Runtime\WorkflowRunner;
 use Spudifull\PhpWorkflowEngine\Application\Service\WorkflowEngine;
@@ -45,8 +48,8 @@ return static function (ContainerConfigurator $configurator): void {
         ->args([
             '$host' => $_ENV['RABBITMQ_HOST'] ?? '127.0.0.1',
             '$port' => (int)($_ENV['RABBITMQ_PORT'] ?? 5672),
-            '$user' => $_ENV['RABBITMQ_USER'] ?? 'guest',
-            '$pass' => $_ENV['RABBITMQ_PASS'] ?? 'guest',
+            '$user' => $_ENV['RABBITMQ_USER'] ?? 'user',
+            '$pass' => $_ENV['RABBITMQ_PASS'] ?? 'password',
         ]);
 
     $services->set(EventSerializer::class);
@@ -55,6 +58,12 @@ return static function (ContainerConfigurator $configurator): void {
         ->args([
             service(Connection::class),
             service(EventSerializer::class)
+        ]);
+
+    $services->set(OutboxRepositoryInterface::class, PostgresSqlOutboxStore::class)
+        ->args([
+            new Reference(Connection::class),
+            new Reference(EventSerializer::class)
         ]);
 
     $services->set(WorkflowRunner::class);

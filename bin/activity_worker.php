@@ -9,6 +9,7 @@ use Spudifull\PhpWorkflowEngine\Domain\Model\EventStream;
 use Spudifull\PhpWorkflowEngine\Domain\Repository\EventStoreInterface;
 use Spudifull\PhpWorkflowEngine\Domain\Repository\QueueInterface;
 use Spudifull\PhpWorkflowEngine\Domain\ValueObject\ActivityTask;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\Dotenv\Dotenv;
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -17,6 +18,7 @@ if (file_exists(__DIR__ . '/../.env')) {
     new Dotenv()->load(__DIR__ . '/../.env');
 }
 
+/** @var ContainerBuilder $container */
 $container = require __DIR__ . '/../src/bootstrap.php';
 
 echo "Activity Worker started. Waiting for heavy lifting...\n";
@@ -36,11 +38,9 @@ $queue->consume(function (string $json) use ($activityRegistry, $eventStore, $qu
     echo "Executing Activity: $activityTask->activityName for Workflow: $activityTask->workflowId\n";
 
     try {
-        $task = ActivityTask::fromJson($json);
-
         $handler = $activityRegistry->getHandler($activityTask->activityName);
 
-        $result = $activityRegistry->execute($task->activityName, $task->args);
+        $result = $handler($activityTask->args);
 
         $event = new ActivityCompleted($activityTask->workflowId, $activityTask->activityName, $result);
         $eventStore->append($activityTask->workflowId, new EventStream([$event]));
@@ -55,12 +55,4 @@ $queue->consume(function (string $json) use ($activityRegistry, $eventStore, $qu
     }
 
     $queue->push($activityTask->workflowId, 'workflow_tasks');
-
-    public function execute(string $activityName, array $args): mixed
-    {
-        $handler = $this->getHandler($activityName);
-
-        return $handler($args);
-    }
-
 }, 'activity_tasks');

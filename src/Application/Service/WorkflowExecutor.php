@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Spudifull\PhpWorkflowEngine\Application\Service;
 
+use Doctrine\DBAL\Connection;
 use Exception;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
-use Spudifull\PhpWorkflowEngine\Domain\Repository\QueueInterface;
+use Spudifull\PhpWorkflowEngine\Domain\Repository\OutboxRepositoryInterface;
 use Spudifull\PhpWorkflowEngine\Domain\ValueObject\ActivityTask;
 use Throwable;
 
@@ -30,7 +31,8 @@ final readonly class WorkflowExecutor
         private EventStoreInterface $eventStore,
         private WorkflowRunner $runner,
         private ContainerInterface $container,
-        private QueueInterface $queue
+        private Connection $connection,
+        private OutboxRepositoryInterface $outboxRepository,
     ) {}
 
     /**
@@ -43,60 +45,72 @@ final readonly class WorkflowExecutor
      */
     public function run(WorkflowId $id): void
     {
-        $history = $this->eventStore->load($id);
-
-        $historyIterator = $history->getIterator();
-        $historyIterator->rewind();
-        $initialEvent = $historyIterator->current();
-
-        if (!$initialEvent instanceof WorkflowStarted) {
-            throw CorruptedHistoryException::missingWorkflowStarted($id);
-        }
-
-        $workflowClass = $initialEvent->workflowName;
-        if (!class_exists($workflowClass)) {
-            throw WorkflowClassNotFoundException::for($workflowClass);
-        }
-
-        $workflow = $this->container->get($workflowClass);
-
-        if (!method_exists($workflow, 'run')) {
-            throw WorkflowClassNotFoundException::missingRunMethod($workflowClass);
-        }
+        $this->connection->beginTransaction();
 
         try {
-            $output = $this->runner->run($workflow, 'run', $history, [$initialEvent->input]);
+            $history = $this->eventStore->load($id);
+
+            $historyIterator = $history->getIterator();
+            $historyIterator->rewind();
+            $initialEvent = $historyIterator->current();
+
+            if (!$initialEvent instanceof WorkflowStarted) {
+                throw CorruptedHistoryException::missingWorkflowStarted($id);
+            }
+
+            $workflowClass = $initialEvent->workflowName;
+            if (!class_exists($workflowClass)) {
+                throw WorkflowClassNotFoundException::for($workflowClass);
+            }
+
+            $workflow = $this->container->get($workflowClass);
+
+            if (!method_exists($workflow, 'run')) {
+                throw WorkflowClassNotFoundException::missingRunMethod($workflowClass);
+            }
+
+            try {
+                $output = $this->runner->run($workflow, 'run', $history, [$initialEvent->input]);
+            } catch (Throwable $e) {
+                $event = new WorkflowFailed(
+                    workflowId: $id,
+                    error: $e->getMessage(),
+                    stackTrace: $e->getTraceAsString()
+                );
+                $this->eventStore->append($id, new EventStream([$event]));
+                $this->connection->commit();
+                throw $e;
+            }
+
+            if ($output instanceof ActivityRequest) {
+                $event = new ActivityScheduled(
+                    workflowId: $id,
+                    activityName: $output->name,
+                    args: $output->args
+                );
+                $this->eventStore->append($id, new EventStream([$event]));
+
+                $task = new ActivityTask(
+                    workflowId: $id,
+                    activityName: $output->name,
+                    args: $output->args
+                );
+
+                $this->outboxRepository->schedule('activity_tasks', (string)$task);
+            } else {
+                $event = new WorkflowCompleted(
+                    workflowId: $id,
+                    result: $output
+                );
+                $this->eventStore->append($id, new EventStream([$event]));
+            }
+
+            $this->connection->commit();
         } catch (Throwable $e) {
-            $event = new WorkflowFailed(
-                workflowId: $id,
-                error: $e->getMessage(),
-                stackTrace: $e->getTraceAsString()
-            );
-            $this->eventStore->append($id, new EventStream([$event]));
+            if ($this->connection->isTransactionActive()) {
+                $this->connection->rollBack();
+            }
             throw $e;
-        }
-
-        if ($output instanceof ActivityRequest) {
-            $event = new ActivityScheduled(
-                workflowId: $id,
-                activityName: $output->name,
-                args: $output->args
-            );
-            $this->eventStore->append($id, new EventStream([$event]));
-
-            $task = new ActivityTask(
-                workflowId: $id,
-                activityName: $output->name,
-                args: $output->args
-            );
-
-            $this->queue->push($task, 'activity_tasks');
-        } else {
-            $event = new WorkflowCompleted(
-                workflowId: $id,
-                result: $output
-            );
-            $this->eventStore->append($id, new EventStream([$event]));
         }
     }
 }
